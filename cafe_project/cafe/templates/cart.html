@@ -1,0 +1,151 @@
+{% load static tailwind_tags %}
+<html>
+    <head>
+        <title>Order Lists</title>
+        {% tailwind_css %}
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    </head>
+    <body class="bg-white">
+        <!-- Header -->
+        <div class="bg-[#5E9EA0] flex items-center px-5 py-5 w-full fixed top-0 left-0 h-40 z-50">
+            <a href="{% url 'menu' %}" class="cursor-pointer">
+                <img class="h-10 w-10" src="{% static 'images/Back.png' %}" alt="Back">
+            </a>
+            <div class="flex-grow text-center text-5xl text-white font-bold">Order Lists</div>
+        </div>
+
+        <div class="mt-40 px-5">
+
+            <!-- Estimated Time -->
+            <div class="bg-gray-100 p-4 rounded-lg mb-6">
+                <p class="text-gray-600">Estimated time</p>
+                <p class="text-xl font-bold" id="estimated-time">Loading...</p>
+            </div>
+
+            <!-- Order Details -->
+            <div class="mb-6">
+                <h3 class="font-bold text-2xl mb-4">Order Details</h3>
+                <div id="cart-items" class="space-y-4 bg-gray-100 rounded-lg p-4">
+                    <!-- Empty cart message -->
+                    <div id="empty-cart" class="hidden text-center py-10">
+                        <img src="{% static 'images/Cart.png' %}" alt="Empty Cart" class="w-32 h-32 mx-auto mb-4 opacity-50">
+                        <p class="text-2xl text-gray-500 font-semibold">Your cart is empty</p>
+                        <a href="{% url 'menu' %}" class="mt-4 inline-block text-[#5E9EA0] font-medium">Browse Menu</a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Add more items button -->
+            <a href="{% url 'menu' %}" class="block text-[#5E9EA0] font-medium mb-6">Add more items</a>
+
+            <!-- Total Section -->
+            <div class="mb-24">
+                <div class="flex justify-between items-center mb-2">
+                    <span class="text-gray-500">Subtotal</span>
+                    <span class="font-medium">$0.00</span>
+                </div>
+                <div class="flex justify-between items-center">
+                    <span class="text-xl font-bold">Total</span>
+                    <span class="text-xl font-bold" id="total-amount">$0.00</span>
+                </div>
+            </div>
+
+            <!-- Checkout Button -->
+            <div class="fixed bottom-0 left-0 w-full p-4 bg-white">
+                <button onclick="handleCheckout()" class="w-full bg-[#5E9EA0] text-white py-3 rounded-lg text-lg">
+                    Checkout
+                </button>
+            </div>
+
+            <!-- Alert Modal -->
+            <div id="alert-modal" class="hidden fixed inset-0 bg-gray-500 bg-opacity-50 flex items-center justify-center z-50">
+                <div class="bg-white p-6 rounded-lg shadow-lg max-w-sm mx-4">
+                    <p class="text-lg text-center mb-4">Please add items to your cart before checking out</p>
+                    <button onclick="closeAlert()" class="w-full bg-[#5E9EA0] text-white py-2 rounded-lg">OK</button>
+                </div>
+            </div>
+        </div>
+
+        <script>
+            document.addEventListener('DOMContentLoaded', function() {
+                const cartItemsContainer = document.getElementById('cart-items');
+                const cart = JSON.parse(localStorage.getItem('cart') || '{}');
+                const emptyCart = document.getElementById('empty-cart');
+                let total = 0;
+
+                if (Object.keys(cart).length === 0) {
+                    emptyCart.classList.remove('hidden');
+                } else {
+                    emptyCart.classList.add('hidden');
+
+                    for (const [itemName, itemData] of Object.entries(cart)) {
+                        const price = parseFloat(itemData.price.replace('$', ''));
+                        total += price * itemData.quantity;
+
+                        const itemElement = document.createElement('div');
+                        itemElement.className = 'flex items-center justify-between border-b border-gray-200 py-2';
+                        itemElement.innerHTML = `
+                            <div class="flex items-center space-x-4">
+                                <img src="${itemData.image}" alt="${itemName}" class="w-16 h-16 rounded-lg">
+                                <div>
+                                    <h4 class="font-medium">${itemName}</h4>
+                                    <div class="flex items-center space-x-2 mt-1">
+                                        <button onclick="updateQuantity('${itemName}', ${itemData.quantity - 1})" class="decrease-btn text-[#5E9EA0] w-6 h-6 rounded-full border border-[#5E9EA0]">-</button>
+                                        <span class="quantity">${itemData.quantity}</span>
+                                        <button onclick="updateQuantity('${itemName}', ${itemData.quantity + 1})" class="increase-btn text-[#5E9EA0] w-6 h-6 rounded-full border border-[#5E9EA0]">+</button>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="text-right">
+                                <div class="font-medium">${itemData.price}</div>
+                            </div>
+                        `;
+                        cartItemsContainer.appendChild(itemElement);
+                    }
+
+                    document.querySelector('[id="total-amount"]').textContent = '$' + total.toFixed(2);
+                    
+                    // Calculate estimated time based on total items
+                    const totalItems = Object.values(cart).reduce((sum, item) => sum + item.quantity, 0);
+                    if (totalItems === 0) {
+                        document.getElementById('estimated-time').textContent = 'Add items to see estimated time';
+                    } else {
+                        const baseTime = 5;
+                        const additionalTimePerItem = 5;
+                        const estimatedTime = baseTime + ((totalItems - 1) * additionalTimePerItem);
+                        const timeRange = `${estimatedTime}-${estimatedTime + 5}`;
+                        document.getElementById('estimated-time').textContent = `${timeRange} mins`;
+                    }
+                }
+            });
+
+
+            function updateQuantity(itemName, newQuantity) {
+                const cart = JSON.parse(localStorage.getItem('cart') || '{}');
+                if (newQuantity > 0) {
+                    cart[itemName].quantity = newQuantity;
+                    localStorage.setItem('cart', JSON.stringify(cart));
+                    location.reload();
+                } else {
+                    delete cart[itemName];
+                    localStorage.setItem('cart', JSON.stringify(cart));
+                    location.reload();
+
+                }
+            }
+
+            function handleCheckout() {
+                const cart = JSON.parse(localStorage.getItem('cart') || '{}');
+                if (Object.keys(cart).length === 0) {
+                    document.getElementById('alert-modal').classList.remove('hidden');
+                } else {
+                    window.location.href = "{% url 'checkout' %}";
+                }
+            }
+
+            function closeAlert() {
+                document.getElementById('alert-modal').classList.add('hidden');
+            }
+        </script>
+    </body>
+</html>
